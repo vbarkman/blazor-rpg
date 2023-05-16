@@ -21,7 +21,7 @@ namespace DungeonRpg.Engine
     public enum Gender { Male, Female }
 
     [Serializable]
-    public class Race : IKey<Race>
+    public class Race : IKey
     {
         public Guid Id { get; set; }
         public string Name { get; set; }
@@ -48,7 +48,7 @@ namespace DungeonRpg.Engine
         public Race Race { get; set; } = new Race();
     }
     [Serializable]
-    public class Enemy : Entity, IKey<Enemy> 
+    public class Enemy : Entity, IKey
     {
         public int TileId { get; set; }
         public enum EnemyAiState { Idle, Attacking, Dead };
@@ -87,7 +87,7 @@ namespace DungeonRpg.Engine
     }
 
     [Serializable]
-    public class Player : Character, IKey<Player>
+    public class Player : Character, IKey
     {
         [Obsolete("Hash this shit!")]
         public string Password { get; set; }
@@ -95,5 +95,5 @@ namespace DungeonRpg.Engine
     }
 
     [Serializable]
-    public class Npc : Character, IKey<Npc> { }
+    public class Npc : Character, IKey { }
 }

@@ -19,7 +19,7 @@
 </head>
 <body>
     <app>
-        <component type="typeof(App)" render-mode="ServerPrerendered" />
+        <component type="typeof(App)" render-mode="Server" />
     </app>
     <script src="_framework/blazor.server.js"></script>
     <script type="text/javascript">
@@ -28,6 +28,19 @@
                 document.getElementById(id).focus();
             }
         }
+    </script>
+
+    <script src="_content/Blazor.Extensions.Canvas/blazor.extensions.canvas.js"></script>
+    <script>
+        function gameLoop(timeStamp) {
+            window.requestAnimationFrame(gameLoop);
+            theInstance.invokeMethodAsync('GameLoop', timeStamp);
+        }
+
+        window.initGame = (instance) => {
+            window.theInstance = instance;
+            window.requestAnimationFrame(gameLoop);
+        };
     </script>
 </body>
 </html>

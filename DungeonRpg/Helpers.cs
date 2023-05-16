@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace DungeonRpg
@@ -11,11 +12,9 @@ namespace DungeonRpg
     {
         public static T DeepClone<T>(T obj)
         {
-            using var ms = new MemoryStream();
-            var formatter = new BinaryFormatter();
-            formatter.Serialize(ms, obj);
-            ms.Position = 0;
-            return (T)formatter.Deserialize(ms);
+            var json = JsonSerializer.Serialize(obj);
+
+            return JsonSerializer.Deserialize<T>(json);
         }
     }
 }

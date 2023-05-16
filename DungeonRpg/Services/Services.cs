@@ -7,13 +7,13 @@ using System.Threading.Tasks;
 
 namespace DungeonRpg.Services
 {
-    public interface IKey<T>
+    public interface IKey
     {
         Guid Id { get; set; }
     }
 
     // Services
-    public abstract class Service<T> where T : IKey<T>, new()
+    public abstract class Service<T> where T : IKey, new()
     {
         protected IList<T> Entities { get; set; }
 

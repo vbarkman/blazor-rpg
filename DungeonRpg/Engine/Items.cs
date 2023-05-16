@@ -9,7 +9,7 @@ namespace DungeonRpg.Engine
     public enum ItemType { Weapon, Armor, Jewelry, Consumable, Material, Book, Item }
     public enum ItemGrade { Common, Rare, Unique, Legendary }
     [Serializable]
-    public class Item : IKey<Item>
+    public class Item : IKey
     {
         public Guid Id { get; set; }
         public string Name { get; set; }

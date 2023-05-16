@@ -60,7 +60,6 @@ namespace DungeonRpg.Services
         public IEnumerable<Entity> EntitiesAtPosition(int x, int y, Guid mapId)
             => GetEntitiesAtPosition((x, y), mapId);
 
-        [Obsolete("Method has been moved to the PlayerService.")]
         public IEnumerable<Entity> GetEntitiesAtPosition((int x, int y) position, Guid mapId)
         {
             var entities = new List<Entity>();

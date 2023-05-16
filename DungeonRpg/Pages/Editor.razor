@@ -13,1061 +13,1064 @@
 @attribute [Authorize(Roles = "Administrator")]
 
 <div class="editor">
-    <div class="editor-toolbar">
-        <fieldset>
-            <legend>File</legend>
-            <button class="button-stretch button-small" @onclick="() => OpenMap(mapService.New())">New</button>
-            <button class="button-stretch button-small" @onclick="Save">Save</button>
-            <input type="checkbox" @bind="EnableAutoSave" /> Auto-save <br />
-            @if (LastSaveTime != DateTime.MinValue)
-            {
-                <span><b>Last save:</b> @LastSaveTime</span>
-            }
-            else if (Map != null)
-            {
-                <b>Not saved</b>
-            }
-            <hr />
-            @if (Map != null)
-            {
-                <b>@Map.Name</b> <br />
-                <span>@Map.Description</span> <br />
-                <span><b>Size:</b> @Map.Width x @Map.Height</span> <br />
-            }
-            else
-            {
-                <i>No map opened</i>
-            }
-        </fieldset>
-        <fieldset>
-            <legend>Tools</legend>
-            <div>
-                <table>
-                    <tr>
-                        <td><b>Tile</b>: <input type="text" @bind="SelectedTileIndex" style="width: 48px;" /></td>
-                        <td style="width: 40px;"><div class="tile tile-@SelectedTileIndex"></div></td>
-                    </tr>
-                </table>
-            </div>
-            <EditorButton Text="Pen" Active="Mode == DrawMode.Pen" OnClickCallback="() => SetMode(DrawMode.Pen)" />
-            <EditorButton Text="Rectangle" Active="Mode == DrawMode.Rectangle" OnClickCallback="() => SetMode(DrawMode.Rectangle)" />
-            <EditorButton Text="Fill" Active="Mode == DrawMode.Fill" OnClickCallback="() => SetMode(DrawMode.Fill)" />
-            <EditorButton Text="All" Active="Mode == DrawMode.All" OnClickCallback="() => SetMode(DrawMode.All)" />
-            <EditorButton Text="Copy" Active="Mode == DrawMode.Copy" OnClickCallback="() => SetMode(DrawMode.Copy)" />
-            <EditorButton Text="Remove" Active="Mode == DrawMode.Remove" OnClickCallback="() => SetMode(DrawMode.Remove)" />
-            <EditorButton Text="Inspect" Active="Mode == DrawMode.Inspect" OnClickCallback="() => SetMode(DrawMode.Inspect)" />
-        </fieldset>
-        <fieldset>
-            <legend>Layers</legend>
-            <EditorButton Text="Overlay" Active="Layer == LayerType.Overlay" OnClickCallback="() => SetLayer(LayerType.Overlay)" />
-            <EditorButton Text="Solid" Active="Layer == LayerType.Solid" OnClickCallback="() => SetLayer(LayerType.Solid)" />
-            <EditorButton Text="Floor" Active="Layer == LayerType.Floor" OnClickCallback="() => SetLayer(LayerType.Floor)" />
-        </fieldset>
-        <fieldset>
-            <legend>Nav</legend>
-            <table>
-                <tr>
-                    <td>X</td>
-                    <td><input type="text" @bind="Position.X" /></td>
-                    <td>Y</td>
-                    <td><input type="text" @bind="Position.Y" /></td>
-                </tr>
-            </table>
-            <hr />
-            <table class="table-borderless">
-                <tr>
-                    <td></td>
-                    <td><button class="button-stretch button-small button-nav" @onclick="() => Move(0, -5)">Up</button></td>
-                    <td></td>
-                </tr>
-                <tr>
-                    <td><button class="button-stretch button-small button-nav" @onclick="() => Move(-5, 0)">Left</button></td>
-                    <td><button class="button-stretch button-small button-nav" @onclick="() => Move(-Position.X, -Position.Y)">Reset</button></td>
-                    <td><button class="button-stretch button-small button-nav" @onclick="() => Move(5, 0)">Right</button></td>
-                </tr>
-                <tr>
-                    <td></td>
-                    <td><button class="button-stretch button-small button-nav" @onclick="() => Move(0, 5)">Down</button></td>
-                    <td></td>
-                </tr>
-            </table>
-        </fieldset>
-        <p style="font-size: 85%; color: #999; text-align: center;">
-            RPG Editor v0.1 (alpha)
-        </p>
-    </div>
-    <div class="editor-panel">
-        <div class="map-panel">
-            <div class="map">
-                @if (Map != null)
-                {
-                    for (int y = 0; y < 25; y++)
-                    {
-                        <div class="map-row">
-                            @for (int x = 0; x < 25; x++)
-                            {
-                                (int x, int y) position = (x + Position.X, y + Position.Y);
-                            <div class="map-tile" @onclick="() => Click(position)" @onkeydown="KeyboardHandler">
-                                @foreach (var layer in Map.LayersEnumerable())
-                                {
-                                    var tileId = Map[layer, position.x, position.y];
-                                    if (tileId != 0)
-                                    {
-                                        <div class="map-tile-layer">
-                                            <div class="tile tile-@tileId"></div>
-                                        </div>
-                                    }
-                                }
-                                @if (FirstSelectedPoint == position)
-                                {
-                                    <div class="map-tile-layer">
-                                        <div class="tile tile-10"></div>
-                                    </div>
-                                }
-                                @foreach (var entity in Map.GetEntitiesAtPosition(position))
-                                {
-                                    switch (entity)
-                                    {
-                                        case Enemy enemy:
-                                            <div class="map-tile-layer">
-                                                <div class="tile tile-@enemy.TileId"></div>
-                                            </div>
-                                            break;
-                                        default:
-                                            <div class="map-tile-layer">
-                                                <div class="tile tile-71"></div>
-                                            </div>
-                                            break;
-                                    }
-                                }
-                                @foreach (var players in playerService.GetPlayersAtPosition(position, Map.Id))
-                                {
-                                    <div class="map-tile-layer">
-                                        <div class="tile tile-71"></div>
-                                    </div>
-                                }
-                                @if (ShowInspectOverlay(position))
-                                {
-                                    <div class="map-tile-layer">
-                                        <div class="tile tile-8"></div>
-                                    </div>
-                                }
-                                @if (InspectCoordinates.HasValue && position == InspectCoordinates.Value)
-                                {
-                                    <div class="map-tile-layer">
-                                        <div class="tile tile-10"></div>
-                                    </div>
-                                }
-                            </div>
-                            }
-                        </div>
-                    }
-                }
-                else
-                {
-                    <div style="width: 100%; text-align: center; margin-top: 360px; font-size: 36pt; color: #111; font-weight: bold;">NO MAP DATA</div>
-                }
-                <div style="clear: both;"></div>
-            </div>
-        </div>
-        <div class="tile-panel">
-            <TilesetViewer TileIndex="SelectedTileIndex" TileChanged="OnTileChanged" />
-        </div>
-    </div>
-    <div class="editor-data">
+	<div class="editor-toolbar">
+		<fieldset>
+			<legend>File</legend>
+			<button class="button-stretch button-small" @onclick="() => OpenMap(mapService.New())">New</button>
+			<button class="button-stretch button-small" @onclick="Save">Save</button>
+			<input type="checkbox" @bind="EnableAutoSave" /> Auto-save
+			<br />
+			@if (LastSaveTime != DateTime.MinValue)
+			{
+				<span><b>Last save:</b> @LastSaveTime</span>
+			}
+			else if (Map != null)
+			{
+				<b>Not saved</b>
+			}
+			<hr />
+			@if (Map != null)
+			{
+				<b>@Map.Name</b>
+				<br />
+				<span>@Map.Description</span>
+				<br />
+				<span><b>Size:</b> @Map.Width x @Map.Height</span>
+				<br />
+			}
+			else
+			{
+				<i>No map opened</i>
+			}
+		</fieldset>
+		<fieldset>
+			<legend>Tools</legend>
+			<div>
+				<table>
+					<tr>
+						<td><b>Tile</b>: <input type="text" @bind="SelectedTileIndex" style="width: 48px;" /></td>
+						<td style="width: 40px;"><div class="tile tile-@SelectedTileIndex"></div></td>
+					</tr>
+				</table>
+			</div>
+			<EditorButton Text="Pen" Active="Mode == DrawMode.Pen" OnClickCallback="() => SetMode(DrawMode.Pen)" />
+			<EditorButton Text="Rectangle" Active="Mode == DrawMode.Rectangle" OnClickCallback="() => SetMode(DrawMode.Rectangle)" />
+			<EditorButton Text="Fill" Active="Mode == DrawMode.Fill" OnClickCallback="() => SetMode(DrawMode.Fill)" />
+			<EditorButton Text="All" Active="Mode == DrawMode.All" OnClickCallback="() => SetMode(DrawMode.All)" />
+			<EditorButton Text="Copy" Active="Mode == DrawMode.Copy" OnClickCallback="() => SetMode(DrawMode.Copy)" />
+			<EditorButton Text="Remove" Active="Mode == DrawMode.Remove" OnClickCallback="() => SetMode(DrawMode.Remove)" />
+			<EditorButton Text="Inspect" Active="Mode == DrawMode.Inspect" OnClickCallback="() => SetMode(DrawMode.Inspect)" />
+		</fieldset>
+		<fieldset>
+			<legend>Layers</legend>
+			<EditorButton Text="Overlay" Active="Layer == LayerType.Overlay" OnClickCallback="() => SetLayer(LayerType.Overlay)" />
+			<EditorButton Text="Solid" Active="Layer == LayerType.Solid" OnClickCallback="() => SetLayer(LayerType.Solid)" />
+			<EditorButton Text="Floor" Active="Layer == LayerType.Floor" OnClickCallback="() => SetLayer(LayerType.Floor)" />
+		</fieldset>
+		<fieldset>
+			<legend>Nav</legend>
+			<table>
+				<tr>
+					<td>X</td>
+					<td><input type="text" @bind="Position.X" /></td>
+					<td>Y</td>
+					<td><input type="text" @bind="Position.Y" /></td>
+				</tr>
+			</table>
+			<hr />
+			<table class="table-borderless">
+				<tr>
+					<td></td>
+					<td><button class="button-stretch button-small button-nav" @onclick="() => Move(0, -5)">Up</button></td>
+					<td></td>
+				</tr>
+				<tr>
+					<td><button class="button-stretch button-small button-nav" @onclick="() => Move(-5, 0)">Left</button></td>
+					<td><button class="button-stretch button-small button-nav" @onclick="() => Move(-Position.X, -Position.Y)">Reset</button></td>
+					<td><button class="button-stretch button-small button-nav" @onclick="() => Move(5, 0)">Right</button></td>
+				</tr>
+				<tr>
+					<td></td>
+					<td><button class="button-stretch button-small button-nav" @onclick="() => Move(0, 5)">Down</button></td>
+					<td></td>
+				</tr>
+			</table>
+		</fieldset>
+		<p style="font-size: 85%; color: #999; text-align: center;">
+			RPG Editor v0.1 (alpha)
+		</p>
+	</div>
+	<div class="editor-panel">
+		<div class="map-panel">
+			<div class="map">
+				@if (Map != null)
+				{
+					for (int y = 0; y < 25; y++)
+					{
+						<div class="map-row">
+							@for (int x = 0; x < 25; x++)
+							{
+								(int x, int y) position = (x + Position.X, y + Position.Y);
+								<div class="map-tile" @onclick="() => Click(position)" @onkeydown="KeyboardHandler">
+									@foreach (var layer in Map.LayersEnumerable())
+									{
+										var tileId = Map[layer, position.x, position.y];
+										if (tileId != 0)
+										{
+											<div class="map-tile-layer">
+												<div class="tile tile-@tileId"></div>
+											</div>
+										}
+									}
+									@if (FirstSelectedPoint == position)
+									{
+										<div class="map-tile-layer">
+											<div class="tile tile-10"></div>
+										</div>
+									}
+									@foreach (var entity in Map.GetEntitiesAtPosition(position))
+									{
+										switch (entity)
+										{
+											case Enemy enemy:
+												<div class="map-tile-layer">
+													<div class="tile tile-@enemy.TileId"></div>
+												</div>
+												break;
+											default:
+												<div class="map-tile-layer">
+													<div class="tile tile-71"></div>
+												</div>
+												break;
+										}
+									}
+									@foreach (var players in playerService.GetPlayersAtPosition(position, Map.Id))
+									{
+										<div class="map-tile-layer">
+											<div class="tile tile-71"></div>
+										</div>
+									}
+									@if (ShowInspectOverlay(position))
+									{
+										<div class="map-tile-layer">
+											<div class="tile tile-8"></div>
+										</div>
+									}
+									@if (InspectCoordinates.HasValue && position == InspectCoordinates.Value)
+									{
+										<div class="map-tile-layer">
+											<div class="tile tile-10"></div>
+										</div>
+									}
+								</div>
+							}
+						</div>
+					}
+				}
+				else
+				{
+					<div style="width: 100%; text-align: center; margin-top: 360px; font-size: 36pt; color: #111; font-weight: bold;">NO MAP DATA</div>
+				}
+				<div style="clear: both;"></div>
+			</div>
+		</div>
+		<div class="tile-panel">
+			<TilesetViewer TileIndex="SelectedTileIndex" TileChanged="OnTileChanged" />
+		</div>
+	</div>
+	<div class="editor-data">
 
-        <!-- Maps -->
-        <fieldset>
-            <legend>Maps</legend>
-            <table class="table-condensed">
-                <thead>
-                    <tr>
-                        <td>Map</td>
-                        <td>Description</td>
-                        <td>Width</td>
-                        <td>Height</td>
-                        <td></td>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var map in mapService.All())
-                    {
-                        <tr>
-                            <td class="form-large"><input type="text" @bind="map.Name" /></td>
-                            <td><input type="text" @bind="map.Description" /></td>
-                            <td class="form-small"><input type="text" @bind="map.Width" /></td>
-                            <td class="form-small"><input type="text" @bind="map.Height" /></td>
-                            <td class="form-large">
-                                <button class="button-small" @onclick="() => OpenMap(map)">load</button>
-                                <button class="button-small" @onclick="() => map.Resize()">resize</button>
-                                <button class="button-small" @onclick="() => map.ClearEntitiesAndItems()">clear</button>
-                                <button class="button-small" @onclick="() => mapService.Remove(map)">&#10060;</button>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-                <tfoot>
-                    <tr>
-                        <td colspan="5"><button class="button-small" @onclick="() => mapService.New()">new</button></td>
-                    </tr>
-                </tfoot>
-            </table>
-        </fieldset>
+		<!-- Maps -->
+		<fieldset>
+			<legend>Maps</legend>
+			<table class="table-condensed">
+				<thead>
+					<tr>
+						<td>Map</td>
+						<td>Description</td>
+						<td>Width</td>
+						<td>Height</td>
+						<td></td>
+					</tr>
+				</thead>
+				<tbody>
+					@foreach (var map in mapService.All())
+					{
+						<tr>
+							<td class="form-large"><input type="text" @bind="map.Name" /></td>
+							<td><input type="text" @bind="map.Description" /></td>
+							<td class="form-small"><input type="text" @bind="map.Width" /></td>
+							<td class="form-small"><input type="text" @bind="map.Height" /></td>
+							<td class="form-large">
+								<button class="button-small" @onclick="() => OpenMap(map)">load</button>
+								<button class="button-small" @onclick="() => map.Resize()">resize</button>
+								<button class="button-small" @onclick="() => map.ClearEntitiesAndItems()">clear</button>
+								<button class="button-small" @onclick="() => mapService.Remove(map)">&#10060;</button>
+							</td>
+						</tr>
+					}
+				</tbody>
+				<tfoot>
+					<tr>
+						<td colspan="5"><button class="button-small" @onclick="() => mapService.New()">new</button></td>
+					</tr>
+				</tfoot>
+			</table>
+		</fieldset>
 
-        <!-- Items -->
-        <fieldset>
-            <legend>Items</legend>
-            <table class="table-condensed">
-                <thead>
-                    <tr>
-                        <td class="form-large">Name</td>
-                        <td>Description</td>
-                        <td class="form-medium">Type</td>
-                        <td class="form-normal">Value</td>
-                        <td class="form-normal"></td>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var item in itemService.All())
-                    {
-                        <tr>
-                            <td><input type="text" @bind="item.Name" /></td>
-                            <td><input type="text" @bind="item.Description" /></td>
-                            <td>@Item.GetItemType(item)</td>
-                            <td><input type="text" @bind="item.Value" /></td>
-                            <td>
-                                <button class="button-small" @onclick="() => itemService.Remove(item)">&#10060;</button>
-                                <button class="button-small" @onclick="() => DisplayItemProperties(item)">&#129146;</button>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-                <tfoot>
-                    <tr>
-                        <td colspan="5">
-                            <button class="button-small" @onclick="() => itemService.New()">new item</button>
-                            <button class="button-small" @onclick="() => itemService.New(ItemType.Weapon)">new weapon</button>
-                            <button class="button-small" @onclick="() => itemService.New(ItemType.Armor)">new armor</button>
-                            <button class="button-small" @onclick="() => itemService.New(ItemType.Jewelry)">new jewelry</button>
-                            <button class="button-small" @onclick="() => itemService.New(ItemType.Consumable)">new consumable</button>
-                            <button class="button-small" @onclick="() => itemService.New(ItemType.Book)">new book</button>
-                            <button class="button-small" @onclick="() => itemService.New(ItemType.Material)">new material</button>
-                        </td>
-                    </tr>
-                </tfoot>
-            </table>
-        </fieldset>
+		<!-- Items -->
+		<fieldset>
+			<legend>Items</legend>
+			<table class="table-condensed">
+				<thead>
+					<tr>
+						<td class="form-large">Name</td>
+						<td>Description</td>
+						<td class="form-medium">Type</td>
+						<td class="form-normal">Value</td>
+						<td class="form-normal"></td>
+					</tr>
+				</thead>
+				<tbody>
+					@foreach (var item in itemService.All())
+					{
+						<tr>
+							<td><input type="text" @bind="item.Name" /></td>
+							<td><input type="text" @bind="item.Description" /></td>
+							<td>@Item.GetItemType(item)</td>
+							<td><input type="text" @bind="item.Value" /></td>
+							<td>
+								<button class="button-small" @onclick="() => itemService.Remove(item)">&#10060;</button>
+								<button class="button-small" @onclick="() => DisplayItemProperties(item)">&#129146;</button>
+							</td>
+						</tr>
+					}
+				</tbody>
+				<tfoot>
+					<tr>
+						<td colspan="5">
+							<button class="button-small" @onclick="() => itemService.New()">new item</button>
+							<button class="button-small" @onclick="() => itemService.New(ItemType.Weapon)">new weapon</button>
+							<button class="button-small" @onclick="() => itemService.New(ItemType.Armor)">new armor</button>
+							<button class="button-small" @onclick="() => itemService.New(ItemType.Jewelry)">new jewelry</button>
+							<button class="button-small" @onclick="() => itemService.New(ItemType.Consumable)">new consumable</button>
+							<button class="button-small" @onclick="() => itemService.New(ItemType.Book)">new book</button>
+							<button class="button-small" @onclick="() => itemService.New(ItemType.Material)">new material</button>
+						</td>
+					</tr>
+				</tfoot>
+			</table>
+		</fieldset>
 
-        <!-- Players -->
-        <fieldset>
-            <legend>Players</legend>
-            <table class="table-condensed">
-                <thead>
-                    <tr>
-                        <td>ID</td>
-                        <td>Name</td>
-                        <td>Admin</td>
-                        <td></td>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var player in playerService.All())
-                    {
-                        <tr>
-                            <td class="form-xlarge"><input type="text" @bind="player.Id" /></td>
-                            <td><input type="text" @bind="player.Name" /></td>
-                            <td><input type="checkbox" @bind="player.IsAdministrator" /></td>
-                            <td class="form-medium">
-                                <button class="button-small" @onclick="() => playerService.Remove(player)">&#10060;</button>
-                                <button class="button-small" @onclick="() => DisplayEntityProperties(player)">&#129146;</button>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-                <tfoot>
-                    <tr>
-                        <td colspan="5"><button class="button-small" @onclick="() => playerService.New()">new</button></td>
-                    </tr>
-                </tfoot>
-            </table>
-        </fieldset>
+		<!-- Players -->
+		<fieldset>
+			<legend>Players</legend>
+			<table class="table-condensed">
+				<thead>
+					<tr>
+						<td>ID</td>
+						<td>Name</td>
+						<td>Admin</td>
+						<td></td>
+					</tr>
+				</thead>
+				<tbody>
+					@foreach (var player in playerService.All())
+					{
+						<tr>
+							<td class="form-xlarge"><input type="text" @bind="player.Id" /></td>
+							<td><input type="text" @bind="player.Name" /></td>
+							<td><input type="checkbox" @bind="player.IsAdministrator" /></td>
+							<td class="form-medium">
+								<button class="button-small" @onclick="() => playerService.Remove(player)">&#10060;</button>
+								<button class="button-small" @onclick="() => DisplayEntityProperties(player)">&#129146;</button>
+							</td>
+						</tr>
+					}
+				</tbody>
+				<tfoot>
+					<tr>
+						<td colspan="5"><button class="button-small" @onclick="() => playerService.New()">new</button></td>
+					</tr>
+				</tfoot>
+			</table>
+		</fieldset>
 
-        <!-- Enemies -->
-        <fieldset>
-            <legend>Enemies</legend>
-            <table class="table-condensed">
-                <thead>
-                    <tr>
-                        <td>ID</td>
-                        <td>Name</td>
-                        <td></td>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var enemy in enemyService.All())
-                    {
-                        <tr>
-                            <td class="form-xlarge"><input type="text" @bind="enemy.Id" /></td>
-                            <td><input type="text" @bind="enemy.Name" /></td>
-                            <td class="form-medium">
-                                <button class="button-small" @onclick="() => enemyService.Remove(enemy)">&#10060;</button>
-                                <button class="button-small" @onclick="() => DisplayEntityProperties(enemy)">&#129146;</button>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-                <tfoot>
-                    <tr>
-                        <td colspan="5"><button class="button-small" @onclick="() => enemyService.New()">new</button></td>
-                    </tr>
-                </tfoot>
-            </table>
-        </fieldset>
+		<!-- Enemies -->
+		<fieldset>
+			<legend>Enemies</legend>
+			<table class="table-condensed">
+				<thead>
+					<tr>
+						<td>ID</td>
+						<td>Name</td>
+						<td></td>
+					</tr>
+				</thead>
+				<tbody>
+					@foreach (var enemy in enemyService.All())
+					{
+						<tr>
+							<td class="form-xlarge"><input type="text" @bind="enemy.Id" /></td>
+							<td><input type="text" @bind="enemy.Name" /></td>
+							<td class="form-medium">
+								<button class="button-small" @onclick="() => enemyService.Remove(enemy)">&#10060;</button>
+								<button class="button-small" @onclick="() => DisplayEntityProperties(enemy)">&#129146;</button>
+							</td>
+						</tr>
+					}
+				</tbody>
+				<tfoot>
+					<tr>
+						<td colspan="5"><button class="button-small" @onclick="() => enemyService.New()">new</button></td>
+					</tr>
+				</tfoot>
+			</table>
+		</fieldset>
 
-        <!-- NPCs -->
-        <fieldset>
-            <legend>NPCs</legend>
-            <table class="table-condensed">
-                <thead>
-                    <tr>
-                        <td>ID</td>
-                        <td>Name</td>
-                        <td></td>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var npc in npcService.All())
-                    {
-                        <tr>
-                            <td class="form-xlarge"><input type="text" @bind="npc.Id" /></td>
-                            <td><input type="text" @bind="npc.Name" /></td>
-                            <td class="form-medium">
-                                <button class="button-small" @onclick="() => npcService.Remove(npc)">&#10060;</button>
-                                <button class="button-small" @onclick="() => DisplayEntityProperties(npc)">&#129146;</button>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-                <tfoot>
-                    <tr>
-                        <td colspan="5"><button class="button-small" @onclick="() => npcService.New()">new</button></td>
-                    </tr>
-                </tfoot>
-            </table>
-        </fieldset>
+		<!-- NPCs -->
+		<fieldset>
+			<legend>NPCs</legend>
+			<table class="table-condensed">
+				<thead>
+					<tr>
+						<td>ID</td>
+						<td>Name</td>
+						<td></td>
+					</tr>
+				</thead>
+				<tbody>
+					@foreach (var npc in npcService.All())
+					{
+						<tr>
+							<td class="form-xlarge"><input type="text" @bind="npc.Id" /></td>
+							<td><input type="text" @bind="npc.Name" /></td>
+							<td class="form-medium">
+								<button class="button-small" @onclick="() => npcService.Remove(npc)">&#10060;</button>
+								<button class="button-small" @onclick="() => DisplayEntityProperties(npc)">&#129146;</button>
+							</td>
+						</tr>
+					}
+				</tbody>
+				<tfoot>
+					<tr>
+						<td colspan="5"><button class="button-small" @onclick="() => npcService.New()">new</button></td>
+					</tr>
+				</tfoot>
+			</table>
+		</fieldset>
 
-        <!-- Races -->
-        <fieldset>
-            <legend>Races</legend>
-            <table class="table-condensed">
-                <thead>
-                    <tr>
-                        <td>ID</td>
-                        <td>Name</td>
-                        <td></td>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var race in raceService.All())
-                    {
-                        <tr>
-                            <td class="form-xlarge"><input type="text" @bind="race.Id" /></td>
-                            <td><input type="text" @bind="race.Name" /></td>
-                            <td class="form-medium">
-                                <button class="button-small" @onclick="() => raceService.Remove(race)">&#10060;</button>
-                                <button class="button-small" @onclick="() => DisplayRaceProperties(race)">&#129146;</button>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-                <tfoot>
-                    <tr>
-                        <td colspan="5"><button class="button-small" @onclick="() => raceService.New()">new</button></td>
-                    </tr>
-                </tfoot>
-            </table>
-        </fieldset>
-    </div>
-    <div class="editor-properties">
-        <fieldset>
-            <legend>Properties</legend>
-            @if (ShowItemProperties && ItemProperties != null)
-            {
-                <table>
-                    <tbody>
-                        <tr>
-                            <td>ID</td>
-                            <td><input type="text" disabled @bind="ItemProperties.Id" /></td>
-                        </tr>
-                        <tr>
-                            <td>Tile</td>
-                            <td>
-                                <table class="table-borderless table-nopadding">
-                                    <tr>
-                                        <td>Tile Id</td>
-                                        <td><input type="text" @bind="ItemProperties.TileId" /></td>
-                                        <td><div class="tile tile-@ItemProperties.TileId"></div></td>
-                                    </tr>
-                                    <tr>
-                                        <td colspan="3"><button class="button-stretch button-small" @onclick="() => ItemProperties.TileId = SelectedTileIndex">set tile</button></td>
-                                    </tr>
-                                </table>
-                            </td>
-                        </tr>
-                        @if (ItemProperties is Equipment eq)
-                        {
-                            <tr>
-                                <td>Equipped tile</td>
-                                <td>
-                                    <table class="table-borderless table-nopadding">
-                                        <tr>
-                                            <td>Tile Id</td>
-                                            <td><input type="text" @bind="eq.EquippedTileId" /></td>
-                                            <td>
-                                                <div class="map-tile">
-                                                    <div class="map-tile-layer">
-                                                        <div class="tile tile-1956"></div>
-                                                    </div>
-                                                    <div class="map-tile-layer">
-                                                        <div class="tile tile-@eq.EquippedTileId"></div>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td colspan="3"><button class="button-stretch button-small" @onclick="() => eq.EquippedTileId = SelectedTileIndex">set tile</button></td>
-                                        </tr>
-                                    </table>
-                                </td>
-                            </tr>
-                        }
-                        <tr>
-                            <td>Name</td>
-                            <td><input type="text" @bind="ItemProperties.Name" /></td>
-                        </tr>
-                        <tr>
-                            <td>Description</td>
-                            <td><input type="text" @bind="ItemProperties.Description" /></td>
-                        </tr>
-                        <tr>
-                            <td>Type</td>
-                            <td><input type="text" value="@Item.GetItemType(ItemProperties)" disabled /></td>
-                        </tr>
-                        <tr>
-                            <td>Grade</td>
-                            <td>
-                                <select class="stretch" @bind="ItemProperties.Grade">
-                                    <option value="Common">Common</option>
-                                    <option value="Rare">Rare</option>
-                                    <option value="Unique">Unique</option>
-                                    <option value="Legendary">Legendary</option>
-                                </select>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>Value</td>
-                            <td><input type="text" @bind="ItemProperties.Value" /></td>
-                        </tr>
-                        <tr>
-                            <td>Level</td>
-                            <td><input type="text" @bind="ItemProperties.Level" /></td>
-                        </tr>
-                        <tr>
-                            <td>Discardable</td>
-                            <td><input type="checkbox" @bind="ItemProperties.Discardable" /></td>
-                        </tr>
-                        <tr>
-                            <td>Sellable</td>
-                            <td><input type="checkbox" @bind="ItemProperties.Sellable" /></td>
-                        </tr>
-                        @if (ItemProperties is Equipment equipment)
-                        {
-                            <tr>
-                                <td>Attributes required</td>
-                                <td>
-                                    <table class="table-borderless table-smallpadding">
-                                        <tr>
-                                            <td>Strength</td>
-                                            <td><input type="text" @bind="equipment.AttributesRequired.Strength" /></td>
-                                        </tr>
-                                        <tr>
-                                            <td>Dexterity</td>
-                                            <td><input type="text" @bind="equipment.AttributesRequired.Dexterity" /></td>
-                                        </tr>
-                                        <tr>
-                                            <td>Constitution</td>
-                                            <td><input type="text" @bind="equipment.AttributesRequired.Constitution" /></td>
-                                        </tr>
-                                        <tr>
-                                            <td>Intelligence</td>
-                                            <td><input type="text" @bind="equipment.AttributesRequired.Intelligence" /></td>
-                                        </tr>
-                                        <tr>
-                                            <td>Wisdom</td>
-                                            <td><input type="text" @bind="equipment.AttributesRequired.Wisdom" /></td>
-                                        </tr>
-                                        <tr>
-                                            <td>Memory</td>
-                                            <td><input type="text" @bind="equipment.AttributesRequired.Memory" /></td>
-                                        </tr>
-                                    </table>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Enchantment level</td>
-                                <td><input type="text" @bind="equipment.EnchantmentLevel" /></td>
-                            </tr>
-                        }
-                        @if (ItemProperties is Weapon weapon)
-                        {
-                            <tr>
-                                <td>Weapon type</td>
-                                <td>
-                                    <select class="stretch" @bind="weapon.WeaponType">
-                                        <option value="OneHanded">One-handed</option>
-                                        <option value="TwoHanded">Two-handed</option>
-                                    </select>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Damage type</td>
-                                <td>
-                                    <select class="stretch" @bind="weapon.DamageType">
-                                        <option value="Physical">Physical damage</option>
-                                        <option value="Magic">Magic damage</option>
-                                    </select>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Damage</td>
-                                <td>
-                                    <table class="table-borderless table-smallpadding">
-                                        <tr>
-                                            <td>Min</td>
-                                            <td><input type="text" @bind="weapon.MinDamage" /></td>
-                                        </tr>
-                                        <tr>
-                                            <td>Max</td>
-                                            <td><input type="text" @bind="weapon.MaxDamage" /></td>
-                                        </tr>
-                                    </table>
-                                </td>
-                            </tr>
-                        }
-                        @if (ItemProperties is Armor armor)
-                        {
-                            <tr>
-                                <td>Armor type</td>
-                                <td>
-                                    <select @bind="armor.ArmorType" class="stretch">
-                                        <option value="Shield">Shield</option>
-                                        <option value="Headwear">Headwear</option>
-                                        <option value="Body">Body</option>
-                                        <option value="Gloves">Gloves</option>
-                                        <option value="Boots">Boots</option>
-                                    </select>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Defense</td>
-                                <td><input type="text" @bind="armor.Defense" /></td>
-                            </tr>
-                        }
-                        @if (ItemProperties is Jewelry jewelry)
-                        {
-                            <tr>
-                                <td>Jewelry type</td>
-                                <td>
-                                    <select @bind="jewelry.JewelryType" class="stretch">
-                                        <option value="Necklace">Necklace</option>
-                                        <option value="Ring">Ring</option>
-                                        <option value="Earring">Earring</option>
-                                    </select>
-                                </td>
-                            </tr>
-                        }
-                        @if (ItemProperties is Book book)
-                        {
-                            <tr>
-                                <td>Pages</td>
-                                <td><input type="text" @bind="book.Pages" /></td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            }
-            else if (ShowEntityProperties && EntityProperties != null)
-            {
-                <table>
-                    <tbody>
-                        <tr>
-                            <td>ID</td>
-                            <td><input type="text" disabled @bind="EntityProperties.Id" /></td>
-                        </tr>
-                        <tr>
-                            <td>Name</td>
-                            <td><input type="text" @bind="EntityProperties.Name" /></td>
-                        </tr>
-                        <tr>
-                            <td>Experience</td>
-                            <td><input type="text" @bind="EntityProperties.Experience" /></td>
-                        </tr>
-                        <tr>
-                            <td>Attributes</td>
-                            <td>
-                                <table class="table-borderless table-smallpadding">
-                                    <tr>
-                                        <td>Strength</td>
-                                        <td><input type="text" @bind="EntityProperties.Attributes.Strength" /></td>
-                                    </tr>
-                                    <tr>
-                                        <td>Dexterity</td>
-                                        <td><input type="text" @bind="EntityProperties.Attributes.Dexterity" /></td>
-                                    </tr>
-                                    <tr>
-                                        <td>Constitution</td>
-                                        <td><input type="text" @bind="EntityProperties.Attributes.Constitution" /></td>
-                                    </tr>
-                                    <tr>
-                                        <td>Intelligence</td>
-                                        <td><input type="text" @bind="EntityProperties.Attributes.Intelligence" /></td>
-                                    </tr>
-                                    <tr>
-                                        <td>Wisdom</td>
-                                        <td><input type="text" @bind="EntityProperties.Attributes.Wisdom" /></td>
-                                    </tr>
-                                    <tr>
-                                        <td>Memory</td>
-                                        <td><input type="text" @bind="EntityProperties.Attributes.Memory" /></td>
-                                    </tr>
-                                </table>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>Health</td>
-                            <td><input type="text" @bind="EntityProperties.Health" /></td>
-                        </tr>
-                        <tr>
-                            <td>Max health</td>
-                            <td><input type="text" @bind="EntityProperties.MaxHealth" /></td>
-                        </tr>
-                        <tr>
-                            <td>Map</td>
-                            <td>
-                                <select @bind="EntityProperties.CurrentMapId" class="stretch">
-                                    @foreach (var map in mapService.All())
-                                    {
-                                        <option value="@map.Id">@map.Name</option>
-                                    }
-                                </select>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>Position</td>
-                            <td>
-                                <table class="table-borderless table-smallpadding">
-                                    <tr>
-                                        <td>X</td>
-                                        <td><input type="text" @bind="EntityProperties.Position.X" /></td>
-                                        <td>Y</td>
-                                        <td><input type="text" @bind="EntityProperties.Position.Y" /></td>
-                                    </tr>
-                                </table>
-                            </td>
-                        </tr>
-                        @if (EntityProperties is Character character)
-                        {
-                            <tr>
-                                <td>Gender</td>
-                                <td>
-                                    <select @bind="character.Gender" class="stretch">
-                                        <option value="Male">Male</option>
-                                        <option value="Female">Female</option>
-                                    </select>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Race</td>
-                                <td>@character.Race.Name</td>
-                            </tr>
-                        }
-                        @if (EntityProperties is Player player)
-                        {
-                            <tr>
-                                <td>Admin</td>
-                                <td><input type="checkbox" @bind="player.IsAdministrator" /></td>
-                            </tr>
-                        }
-                        @if (EntityProperties is Enemy enemy)
-                        {
-                            <tr>
-                                <td>Tile</td>
-                                <td>
-                                    <table class="table-borderless table-nopadding">
-                                        <tr>
-                                            <td>Tile Id</td>
-                                            <td><input type="text" @bind="enemy.TileId" /></td>
-                                            <td><div class="tile tile-@enemy.TileId"></div></td>
-                                        </tr>
-                                        <tr>
-                                            <td colspan="3"><button class="button-stretch button-small" @onclick="() => enemy.TileId = SelectedTileIndex">set tile</button></td>
-                                        </tr>
-                                    </table>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Enable AI</td>
-                                <td><input type="checkbox" @bind="enemy.AiEnabled" /></td>
-                            </tr>
-                            <tr>
-                                <td>Initial position</td>
-                                <td>
-                                    <table class="table-borderless table-smallpadding">
-                                        <tr>
-                                            <td>X</td>
-                                            <td><input type="text" @bind="enemy.InitialPosition.X" /></td>
-                                            <td>Y</td>
-                                            <td><input type="text" @bind="enemy.InitialPosition.Y" /></td>
-                                        </tr>
-                                    </table>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Walk radius</td>
-                                <td><input type="text" @bind="enemy.WalkRadius" /></td>
-                            </tr>
-                            <tr>
-                                <td>Aggressive</td>
-                                <td><input type="checkbox" @bind="enemy.IsAggressive" /></td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            }
-            else if (InspectCoordinates.HasValue && ShowInspectProperties)
-            {
-                <table>
-                    <tbody>
-                        <tr>
-                            <td>Position</td>
-                            <td>(@InspectCoordinates.Value.x, @InspectCoordinates.Value.y)</td>
-                        </tr>
-                        <tr>
-                            <td>Entities</td>
-                            <td>
-                                <table class="table-borderless table-condensed">
-                                    <thead>
-                                        <tr>
-                                            <td>Name</td>
-                                            <td>Type</td>
-                                            <td></td>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach (var entity in playerService.GetPlayersAtPosition(InspectCoordinates.Value, Map.Id))
-                                        {
-                                            <tr>
-                                                <td>@entity.Name</td>
-                                                <td>@entity.GetType().Name</td>
-                                                <td>
-                                                    <button @onclick="() => DisplayEntityProperties(entity)" class="button-small">&#129146;</button>
-                                                </td>
-                                            </tr>
-                                        }
-                                        @foreach (var entity in Map.GetEntitiesAtPosition(InspectCoordinates.Value))
-                                        {
-                                            <tr>
-                                                <td>@entity.Name</td>
-                                                <td>@entity.GetType().Name</td>
-                                                <td>
-                                                    <button @onclick="() => Map.RemoveEntity(entity.Id)" class="button-small">&#10060;</button>
-                                                    <button @onclick="() => DisplayEntityProperties(entity)" class="button-small">&#129146;</button>
-                                                </td>
-                                            </tr>
-                                        }
-                                    </tbody>
-                                    <tfoot>
-                                        <tr>
-                                            <td colspan="2">
-                                                <select class="stretch" @bind="InspectPropertiesSelectedEntity">
-                                                    @foreach (var entity in GetEntities())
-                                                    {
-                                                        <option value="@entity.Id">@entity.Name (@entity.GetType().Name)</option>
-                                                    }
-                                                </select>
-                                            </td>
-                                            <td>
-                                                <button class="button button-small stretch" @onclick="() => AddEntityToMap(InspectPropertiesSelectedEntity, InspectCoordinates.Value)">add</button>
-                                            </td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>Items</td>
-                            <td>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>Actions</td>
-                            <td>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            }
-            else if(RaceProperties != null && ShowRaceProperties)
-            {
-        <table>
-            <tr>
-                <td>ID</td>
-                <td><input type="text" disabled @bind="RaceProperties.Id" /></td>
-            </tr>
-            <tr>
-                <td>Name</td>
-                <td><input type="text" @bind="RaceProperties.Name" /></td>
-            </tr>
-            <tr>
-                <td>Male Tile</td>
-                <td>
-                    <table class="table-borderless table-nopadding">
-                        <tr>
-                            <td>Tile Id</td>
-                            <td><input type="text" @bind="RaceProperties.MaleTileId" /></td>
-                            <td><div class="tile tile-@RaceProperties.MaleTileId"></div></td>
-                        </tr>
-                        <tr>
-                            <td colspan="3"><button class="button-stretch button-small" @onclick="() => RaceProperties.MaleTileId = SelectedTileIndex">set tile</button></td>
-                        </tr>
-                    </table>
-                </td>
-            </tr>
-            <tr>
-                <td>Female Tile</td>
-                <td>
-                    <table class="table-borderless table-nopadding">
-                        <tr>
-                            <td>Tile Id</td>
-                            <td><input type="text" @bind="RaceProperties.FemaleTileId" /></td>
-                            <td><div class="tile tile-@RaceProperties.FemaleTileId"></div></td>
-                        </tr>
-                        <tr>
-                            <td colspan="3"><button class="button-stretch button-small" @onclick="() => RaceProperties.FemaleTileId = SelectedTileIndex">set tile</button></td>
-                        </tr>
-                    </table>
-                </td>
-            </tr>
-        </table>
-            }
-            else
-            {
-                <p>No entity selected.</p>
-            }
-        </fieldset>
-    </div>
+		<!-- Races -->
+		<fieldset>
+			<legend>Races</legend>
+			<table class="table-condensed">
+				<thead>
+					<tr>
+						<td>ID</td>
+						<td>Name</td>
+						<td></td>
+					</tr>
+				</thead>
+				<tbody>
+					@foreach (var race in raceService.All())
+					{
+						<tr>
+							<td class="form-xlarge"><input type="text" @bind="race.Id" /></td>
+							<td><input type="text" @bind="race.Name" /></td>
+							<td class="form-medium">
+								<button class="button-small" @onclick="() => raceService.Remove(race)">&#10060;</button>
+								<button class="button-small" @onclick="() => DisplayRaceProperties(race)">&#129146;</button>
+							</td>
+						</tr>
+					}
+				</tbody>
+				<tfoot>
+					<tr>
+						<td colspan="5"><button class="button-small" @onclick="() => raceService.New()">new</button></td>
+					</tr>
+				</tfoot>
+			</table>
+		</fieldset>
+	</div>
+	<div class="editor-properties">
+		<fieldset>
+			<legend>Properties</legend>
+			@if (ShowItemProperties && ItemProperties != null)
+			{
+				<table>
+					<tbody>
+						<tr>
+							<td>ID</td>
+							<td><input type="text" disabled @bind="ItemProperties.Id" /></td>
+						</tr>
+						<tr>
+							<td>Tile</td>
+							<td>
+								<table class="table-borderless table-nopadding">
+									<tr>
+										<td>Tile Id</td>
+										<td><input type="text" @bind="ItemProperties.TileId" /></td>
+										<td><div class="tile tile-@ItemProperties.TileId"></div></td>
+									</tr>
+									<tr>
+										<td colspan="3"><button class="button-stretch button-small" @onclick="() => ItemProperties.TileId = SelectedTileIndex">set tile</button></td>
+									</tr>
+								</table>
+							</td>
+						</tr>
+						@if (ItemProperties is Equipment eq)
+						{
+							<tr>
+								<td>Equipped tile</td>
+								<td>
+									<table class="table-borderless table-nopadding">
+										<tr>
+											<td>Tile Id</td>
+											<td><input type="text" @bind="eq.EquippedTileId" /></td>
+											<td>
+												<div class="map-tile">
+													<div class="map-tile-layer">
+														<div class="tile tile-1956"></div>
+													</div>
+													<div class="map-tile-layer">
+														<div class="tile tile-@eq.EquippedTileId"></div>
+													</div>
+												</div>
+											</td>
+										</tr>
+										<tr>
+											<td colspan="3"><button class="button-stretch button-small" @onclick="() => eq.EquippedTileId = SelectedTileIndex">set tile</button></td>
+										</tr>
+									</table>
+								</td>
+							</tr>
+						}
+						<tr>
+							<td>Name</td>
+							<td><input type="text" @bind="ItemProperties.Name" /></td>
+						</tr>
+						<tr>
+							<td>Description</td>
+							<td><input type="text" @bind="ItemProperties.Description" /></td>
+						</tr>
+						<tr>
+							<td>Type</td>
+							<td><input type="text" value="@Item.GetItemType(ItemProperties)" disabled /></td>
+						</tr>
+						<tr>
+							<td>Grade</td>
+							<td>
+								<select class="stretch" @bind="ItemProperties.Grade">
+									<option value="Common">Common</option>
+									<option value="Rare">Rare</option>
+									<option value="Unique">Unique</option>
+									<option value="Legendary">Legendary</option>
+								</select>
+							</td>
+						</tr>
+						<tr>
+							<td>Value</td>
+							<td><input type="text" @bind="ItemProperties.Value" /></td>
+						</tr>
+						<tr>
+							<td>Level</td>
+							<td><input type="text" @bind="ItemProperties.Level" /></td>
+						</tr>
+						<tr>
+							<td>Discardable</td>
+							<td><input type="checkbox" @bind="ItemProperties.Discardable" /></td>
+						</tr>
+						<tr>
+							<td>Sellable</td>
+							<td><input type="checkbox" @bind="ItemProperties.Sellable" /></td>
+						</tr>
+						@if (ItemProperties is Equipment equipment)
+						{
+							<tr>
+								<td>Attributes required</td>
+								<td>
+									<table class="table-borderless table-smallpadding">
+										<tr>
+											<td>Strength</td>
+											<td><input type="text" @bind="equipment.AttributesRequired.Strength" /></td>
+										</tr>
+										<tr>
+											<td>Dexterity</td>
+											<td><input type="text" @bind="equipment.AttributesRequired.Dexterity" /></td>
+										</tr>
+										<tr>
+											<td>Constitution</td>
+											<td><input type="text" @bind="equipment.AttributesRequired.Constitution" /></td>
+										</tr>
+										<tr>
+											<td>Intelligence</td>
+											<td><input type="text" @bind="equipment.AttributesRequired.Intelligence" /></td>
+										</tr>
+										<tr>
+											<td>Wisdom</td>
+											<td><input type="text" @bind="equipment.AttributesRequired.Wisdom" /></td>
+										</tr>
+										<tr>
+											<td>Memory</td>
+											<td><input type="text" @bind="equipment.AttributesRequired.Memory" /></td>
+										</tr>
+									</table>
+								</td>
+							</tr>
+							<tr>
+								<td>Enchantment level</td>
+								<td><input type="text" @bind="equipment.EnchantmentLevel" /></td>
+							</tr>
+						}
+						@if (ItemProperties is Weapon weapon)
+						{
+							<tr>
+								<td>Weapon type</td>
+								<td>
+									<select class="stretch" @bind="weapon.WeaponType">
+										<option value="OneHanded">One-handed</option>
+										<option value="TwoHanded">Two-handed</option>
+									</select>
+								</td>
+							</tr>
+							<tr>
+								<td>Damage type</td>
+								<td>
+									<select class="stretch" @bind="weapon.DamageType">
+										<option value="Physical">Physical damage</option>
+										<option value="Magic">Magic damage</option>
+									</select>
+								</td>
+							</tr>
+							<tr>
+								<td>Damage</td>
+								<td>
+									<table class="table-borderless table-smallpadding">
+										<tr>
+											<td>Min</td>
+											<td><input type="text" @bind="weapon.MinDamage" /></td>
+										</tr>
+										<tr>
+											<td>Max</td>
+											<td><input type="text" @bind="weapon.MaxDamage" /></td>
+										</tr>
+									</table>
+								</td>
+							</tr>
+						}
+						@if (ItemProperties is Armor armor)
+						{
+							<tr>
+								<td>Armor type</td>
+								<td>
+									<select @bind="armor.ArmorType" class="stretch">
+										<option value="Shield">Shield</option>
+										<option value="Headwear">Headwear</option>
+										<option value="Body">Body</option>
+										<option value="Gloves">Gloves</option>
+										<option value="Boots">Boots</option>
+									</select>
+								</td>
+							</tr>
+							<tr>
+								<td>Defense</td>
+								<td><input type="text" @bind="armor.Defense" /></td>
+							</tr>
+						}
+						@if (ItemProperties is Jewelry jewelry)
+						{
+							<tr>
+								<td>Jewelry type</td>
+								<td>
+									<select @bind="jewelry.JewelryType" class="stretch">
+										<option value="Necklace">Necklace</option>
+										<option value="Ring">Ring</option>
+										<option value="Earring">Earring</option>
+									</select>
+								</td>
+							</tr>
+						}
+						@if (ItemProperties is Book book)
+						{
+							<tr>
+								<td>Pages</td>
+								<td><input type="text" @bind="book.Pages" /></td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			}
+			else if (ShowEntityProperties && EntityProperties != null)
+			{
+				<table>
+					<tbody>
+						<tr>
+							<td>ID</td>
+							<td><input type="text" disabled @bind="EntityProperties.Id" /></td>
+						</tr>
+						<tr>
+							<td>Name</td>
+							<td><input type="text" @bind="EntityProperties.Name" /></td>
+						</tr>
+						<tr>
+							<td>Experience</td>
+							<td><input type="text" @bind="EntityProperties.Experience" /></td>
+						</tr>
+						<tr>
+							<td>Attributes</td>
+							<td>
+								<table class="table-borderless table-smallpadding">
+									<tr>
+										<td>Strength</td>
+										<td><input type="text" @bind="EntityProperties.Attributes.Strength" /></td>
+									</tr>
+									<tr>
+										<td>Dexterity</td>
+										<td><input type="text" @bind="EntityProperties.Attributes.Dexterity" /></td>
+									</tr>
+									<tr>
+										<td>Constitution</td>
+										<td><input type="text" @bind="EntityProperties.Attributes.Constitution" /></td>
+									</tr>
+									<tr>
+										<td>Intelligence</td>
+										<td><input type="text" @bind="EntityProperties.Attributes.Intelligence" /></td>
+									</tr>
+									<tr>
+										<td>Wisdom</td>
+										<td><input type="text" @bind="EntityProperties.Attributes.Wisdom" /></td>
+									</tr>
+									<tr>
+										<td>Memory</td>
+										<td><input type="text" @bind="EntityProperties.Attributes.Memory" /></td>
+									</tr>
+								</table>
+							</td>
+						</tr>
+						<tr>
+							<td>Health</td>
+							<td><input type="text" @bind="EntityProperties.Health" /></td>
+						</tr>
+						<tr>
+							<td>Max health</td>
+							<td><input type="text" @bind="EntityProperties.MaxHealth" /></td>
+						</tr>
+						<tr>
+							<td>Map</td>
+							<td>
+								<select @bind="EntityProperties.CurrentMapId" class="stretch">
+									@foreach (var map in mapService.All())
+									{
+										<option value="@map.Id">@map.Name</option>
+									}
+								</select>
+							</td>
+						</tr>
+						<tr>
+							<td>Position</td>
+							<td>
+								<table class="table-borderless table-smallpadding">
+									<tr>
+										<td>X</td>
+										<td><input type="text" @bind="EntityProperties.Position.X" /></td>
+										<td>Y</td>
+										<td><input type="text" @bind="EntityProperties.Position.Y" /></td>
+									</tr>
+								</table>
+							</td>
+						</tr>
+						@if (EntityProperties is Character character)
+						{
+							<tr>
+								<td>Gender</td>
+								<td>
+									<select @bind="character.Gender" class="stretch">
+										<option value="Male">Male</option>
+										<option value="Female">Female</option>
+									</select>
+								</td>
+							</tr>
+							<tr>
+								<td>Race</td>
+								<td>@character.Race.Name</td>
+							</tr>
+						}
+						@if (EntityProperties is Player player)
+						{
+							<tr>
+								<td>Admin</td>
+								<td><input type="checkbox" @bind="player.IsAdministrator" /></td>
+							</tr>
+						}
+						@if (EntityProperties is Enemy enemy)
+						{
+							<tr>
+								<td>Tile</td>
+								<td>
+									<table class="table-borderless table-nopadding">
+										<tr>
+											<td>Tile Id</td>
+											<td><input type="text" @bind="enemy.TileId" /></td>
+											<td><div class="tile tile-@enemy.TileId"></div></td>
+										</tr>
+										<tr>
+											<td colspan="3"><button class="button-stretch button-small" @onclick="() => enemy.TileId = SelectedTileIndex">set tile</button></td>
+										</tr>
+									</table>
+								</td>
+							</tr>
+							<tr>
+								<td>Enable AI</td>
+								<td><input type="checkbox" @bind="enemy.AiEnabled" /></td>
+							</tr>
+							<tr>
+								<td>Initial position</td>
+								<td>
+									<table class="table-borderless table-smallpadding">
+										<tr>
+											<td>X</td>
+											<td><input type="text" @bind="enemy.InitialPosition.X" /></td>
+											<td>Y</td>
+											<td><input type="text" @bind="enemy.InitialPosition.Y" /></td>
+										</tr>
+									</table>
+								</td>
+							</tr>
+							<tr>
+								<td>Walk radius</td>
+								<td><input type="text" @bind="enemy.WalkRadius" /></td>
+							</tr>
+							<tr>
+								<td>Aggressive</td>
+								<td><input type="checkbox" @bind="enemy.IsAggressive" /></td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			}
+			else if (InspectCoordinates.HasValue && ShowInspectProperties)
+			{
+				<table>
+					<tbody>
+						<tr>
+							<td>Position</td>
+							<td>(@InspectCoordinates.Value.x, @InspectCoordinates.Value.y)</td>
+						</tr>
+						<tr>
+							<td>Entities</td>
+							<td>
+								<table class="table-borderless table-condensed">
+									<thead>
+										<tr>
+											<td>Name</td>
+											<td>Type</td>
+											<td></td>
+										</tr>
+									</thead>
+									<tbody>
+										@foreach (var entity in playerService.GetPlayersAtPosition(InspectCoordinates.Value, Map.Id))
+										{
+											<tr>
+												<td>@entity.Name</td>
+												<td>@entity.GetType().Name</td>
+												<td>
+													<button @onclick="() => DisplayEntityProperties(entity)" class="button-small">&#129146;</button>
+												</td>
+											</tr>
+										}
+										@foreach (var entity in Map.GetEntitiesAtPosition(InspectCoordinates.Value))
+										{
+											<tr>
+												<td>@entity.Name</td>
+												<td>@entity.GetType().Name</td>
+												<td>
+													<button @onclick="() => Map.RemoveEntity(entity.Id)" class="button-small">&#10060;</button>
+													<button @onclick="() => DisplayEntityProperties(entity)" class="button-small">&#129146;</button>
+												</td>
+											</tr>
+										}
+									</tbody>
+									<tfoot>
+										<tr>
+											<td colspan="2">
+												<select class="stretch" @bind="InspectPropertiesSelectedEntity">
+													@foreach (var entity in GetEntities())
+													{
+														<option value="@entity.Id">@entity.Name (@entity.GetType().Name)</option>
+													}
+												</select>
+											</td>
+											<td>
+												<button class="button button-small stretch" @onclick="() => AddEntityToMap(InspectPropertiesSelectedEntity, InspectCoordinates.Value)">add</button>
+											</td>
+										</tr>
+									</tfoot>
+								</table>
+							</td>
+						</tr>
+						<tr>
+							<td>Items</td>
+							<td>
+							</td>
+						</tr>
+						<tr>
+							<td>Actions</td>
+							<td>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			}
+			else if (RaceProperties != null && ShowRaceProperties)
+			{
+				<table>
+					<tr>
+						<td>ID</td>
+						<td><input type="text" disabled @bind="RaceProperties.Id" /></td>
+					</tr>
+					<tr>
+						<td>Name</td>
+						<td><input type="text" @bind="RaceProperties.Name" /></td>
+					</tr>
+					<tr>
+						<td>Male Tile</td>
+						<td>
+							<table class="table-borderless table-nopadding">
+								<tr>
+									<td>Tile Id</td>
+									<td><input type="text" @bind="RaceProperties.MaleTileId" /></td>
+									<td><div class="tile tile-@RaceProperties.MaleTileId"></div></td>
+								</tr>
+								<tr>
+									<td colspan="3"><button class="button-stretch button-small" @onclick="() => RaceProperties.MaleTileId = SelectedTileIndex">set tile</button></td>
+								</tr>
+							</table>
+						</td>
+					</tr>
+					<tr>
+						<td>Female Tile</td>
+						<td>
+							<table class="table-borderless table-nopadding">
+								<tr>
+									<td>Tile Id</td>
+									<td><input type="text" @bind="RaceProperties.FemaleTileId" /></td>
+									<td><div class="tile tile-@RaceProperties.FemaleTileId"></div></td>
+								</tr>
+								<tr>
+									<td colspan="3"><button class="button-stretch button-small" @onclick="() => RaceProperties.FemaleTileId = SelectedTileIndex">set tile</button></td>
+								</tr>
+							</table>
+						</td>
+					</tr>
+				</table>
+			}
+			else
+			{
+				<p>No entity selected.</p>
+			}
+		</fieldset>
+	</div>
 </div>
 
 @code {
 
-    private Map Map { get; set; }
-    private enum DrawMode { Pen, Rectangle, All, Fill, Copy, Remove, Inspect };
-    private DrawMode Mode { get; set; }
-    private int SelectedTileIndex = Settings.DefaultGrassTileId;
-    private Timer AutoSaveTimer;
-    private bool EnableAutoSave = true;
-    private LayerType Layer = 0;
-    private (int X, int Y) Position = (0, 0);
-    private DateTime LastSaveTime = DateTime.MinValue;
-    private Timer UpdateTimer;
-    private (int x, int y)? FirstSelectedPoint { get; set; }
-    private (int x, int y)? InspectCoordinates { get; set; }
-    private bool ShowInspectProperties { get; set; }
-    private Guid InspectPropertiesSelectedEntity { get; set; }
+	private Map Map { get; set; }
+	private enum DrawMode { Pen, Rectangle, All, Fill, Copy, Remove, Inspect };
+	private DrawMode Mode { get; set; }
+	private int SelectedTileIndex = Settings.DefaultGrassTileId;
+	private Timer AutoSaveTimer;
+	private bool EnableAutoSave = true;
+	private LayerType Layer = 0;
+	private (int X, int Y) Position = (0, 0);
+	private DateTime LastSaveTime = DateTime.MinValue;
+	private Timer UpdateTimer;
+	private (int x, int y)? FirstSelectedPoint { get; set; }
+	private (int x, int y)? InspectCoordinates { get; set; }
+	private bool ShowInspectProperties { get; set; }
+	private Guid InspectPropertiesSelectedEntity { get; set; }
 
-    protected override void OnInitialized()
-    {
-        AutoSaveTimer = new Timer();
-        AutoSaveTimer.Interval = 1000 * 60;
-        AutoSaveTimer.Elapsed += AutoSave;
-        AutoSaveTimer.AutoReset = true;
-        AutoSaveTimer.Start();
-        UpdateTimer = new Timer();
-        UpdateTimer.Interval = 200;
-        UpdateTimer.AutoReset = true;
-        UpdateTimer.Elapsed += UpdateTimerElapsed;
-        UpdateTimer.Start();
-        base.OnInitialized();
-    }
+	protected override void OnInitialized()
+	{
+		AutoSaveTimer = new Timer();
+		AutoSaveTimer.Interval = 1000 * 60;
+		AutoSaveTimer.Elapsed += AutoSave;
+		AutoSaveTimer.AutoReset = true;
+		AutoSaveTimer.Start();
+		UpdateTimer = new Timer();
+		UpdateTimer.Interval = 200;
+		UpdateTimer.AutoReset = true;
+		UpdateTimer.Elapsed += UpdateTimerElapsed;
+		UpdateTimer.Start();
+		base.OnInitialized();
+	}
 
-    private void UpdateTimerElapsed(object sender, EventArgs args)
-    {
-        InvokeAsync(StateHasChanged);
-    }
+	private void UpdateTimerElapsed(object sender, EventArgs args)
+	{
+		InvokeAsync(StateHasChanged);
+	}
 
-    void OnTileChanged(int id)
-    {
-        // Called from child component, so we need to notify
-        // the parent that the state has changed.
-        SelectedTileIndex = id;
-        StateHasChanged();
-    }
+	void OnTileChanged(int id)
+	{
+		// Called from child component, so we need to notify
+		// the parent that the state has changed.
+		SelectedTileIndex = id;
+		StateHasChanged();
+	}
 
-    private void Save()
-    {
-        mapService.Save();
-        itemService.Save();
-        npcService.Save();
-        enemyService.Save();
-        playerService.Save();
-        raceService.Save();
-        LastSaveTime = DateTime.Now;
-    }
+	private void Save()
+	{
+		mapService.Save();
+		itemService.Save();
+		npcService.Save();
+		enemyService.Save();
+		playerService.Save();
+		raceService.Save();
+		LastSaveTime = DateTime.Now;
+	}
 
-    private void OpenMap(Map map)
-    {
-        Map = map;
-        Map.UpdateProperties();
-    }
+	private void OpenMap(Map map)
+	{
+		Map = map;
+	}
 
-    private void SetMode(DrawMode mode)
-    {
-        FirstSelectedPoint = null;
-        Mode = mode;
-    }
+	private void SetMode(DrawMode mode)
+	{
+		FirstSelectedPoint = null;
+		Mode = mode;
+	}
 
-    private void SetLayer(LayerType layer)
-    {
-        Layer = layer;
-    }
+	private void SetLayer(LayerType layer)
+	{
+		Layer = layer;
+	}
 
-    private void AutoSave(object sender, EventArgs args)
-    {
-        if (EnableAutoSave)
-        {
-            Save();
-        }
-    }
+	private void AutoSave(object sender, EventArgs args)
+	{
+		if (EnableAutoSave)
+		{
+			Save();
+		}
+	}
 
-    private void KeyboardHandler(KeyboardEventArgs args)
-    {
-        if (args.CtrlKey && args.Key == "s")
-        {
-            Save();
-        }
-    }
+	private void KeyboardHandler(KeyboardEventArgs args)
+	{
+		if (args.CtrlKey && args.Key == "s")
+		{
+			Save();
+		}
+	}
 
-    private void Click((int x, int y) position)
-    {
-        switch (Mode)
-        {
-            case DrawMode.Pen:
-                Map[Layer, position.x, position.y] = SelectedTileIndex;
-                break;
-            case DrawMode.Remove:
-                Map[Layer, position.x, position.y] = 0;
-                break;
-            case DrawMode.Copy:
-                SelectedTileIndex = Map[Layer, position.x, position.y];
-                Mode = DrawMode.Pen;
-                break;
-            case DrawMode.Fill:
-                Map.FloodFill(Layer, position.x, position.y, SelectedTileIndex);
-                break;
-            case DrawMode.All:
-                Map.FillLayer(Layer, SelectedTileIndex);
-                break;
-            case DrawMode.Rectangle:
-                if (FirstSelectedPoint == null)
-                {
-                    FirstSelectedPoint = position;
-                }
-                else if (FirstSelectedPoint == position)
-                {
-                    FirstSelectedPoint = null;
-                }
-                else
-                {
-                    Map.FillRectangle(Layer, FirstSelectedPoint.Value, position, SelectedTileIndex);
-                    FirstSelectedPoint = null;
-                }
-                break;
-            case DrawMode.Inspect:
-                DisableAllPropertyDisplays();
-                InspectCoordinates = position;
-                ShowInspectProperties = true;
-                break;
-        }
-    }
+	private void Click((int x, int y) position)
+	{
+		switch (Mode)
+		{
+			case DrawMode.Pen:
+				Map[Layer, position.x, position.y] = SelectedTileIndex;
+				break;
+			case DrawMode.Remove:
+				Map[Layer, position.x, position.y] = 0;
+				break;
+			case DrawMode.Copy:
+				SelectedTileIndex = Map[Layer, position.x, position.y];
+				Mode = DrawMode.Pen;
+				break;
+			case DrawMode.Fill:
+				Map.FloodFill(Layer, position.x, position.y, SelectedTileIndex);
+				break;
+			case DrawMode.All:
+				Map.FillLayer(Layer, SelectedTileIndex);
+				break;
+			case DrawMode.Rectangle:
+				if (FirstSelectedPoint == null)
+				{
+					FirstSelectedPoint = position;
+				}
+				else if (FirstSelectedPoint == position)
+				{
+					FirstSelectedPoint = null;
+				}
+				else
+				{
+					Map.FillRectangle(Layer, FirstSelectedPoint.Value, position, SelectedTileIndex);
+					FirstSelectedPoint = null;
+				}
+				break;
+			case DrawMode.Inspect:
+				DisableAllPropertyDisplays();
+				InspectCoordinates = position;
+				ShowInspectProperties = true;
+				break;
+		}
+	}
 
-    private bool ShowItemProperties { get; set; } = false;
-    private Item ItemProperties { get; set; }
-    private void DisplayItemProperties(Item item)
-    {
-        DisableAllPropertyDisplays();
-        ItemProperties = item;
-        ShowItemProperties = true;
-    }
+	private bool ShowItemProperties { get; set; } = false;
+	private Item ItemProperties { get; set; }
+	private void DisplayItemProperties(Item item)
+	{
+		DisableAllPropertyDisplays();
+		ItemProperties = item;
+		ShowItemProperties = true;
+	}
 
-    private bool ShowEntityProperties { get; set; } = false;
-    private Entity EntityProperties { get; set; }
-    private void DisplayEntityProperties(Entity entity)
-    {
-        DisableAllPropertyDisplays();
-        EntityProperties = entity;
-        ShowEntityProperties = true;
-    }
+	private bool ShowEntityProperties { get; set; } = false;
+	private Entity EntityProperties { get; set; }
+	private void DisplayEntityProperties(Entity entity)
+	{
+		DisableAllPropertyDisplays();
+		EntityProperties = entity;
+		ShowEntityProperties = true;
+	}
 
-    private bool ShowRaceProperties { get; set; } = false;
-    private Race RaceProperties { get; set; }
-    private void DisplayRaceProperties(Race race)
-    {
-        DisableAllPropertyDisplays();
-        RaceProperties = race;
-        ShowRaceProperties = true;
-    }
+	private bool ShowRaceProperties { get; set; } = false;
+	private Race RaceProperties { get; set; }
+	private void DisplayRaceProperties(Race race)
+	{
+		DisableAllPropertyDisplays();
+		RaceProperties = race;
+		ShowRaceProperties = true;
+	}
 
-    private void DisableAllPropertyDisplays()
-    {
-        ShowItemProperties = false;
-        ShowEntityProperties = false;
-        ShowInspectProperties = false;
-        ShowRaceProperties = false;
-        InspectCoordinates = null;
-    }
+	private void DisableAllPropertyDisplays()
+	{
+		ShowItemProperties = false;
+		ShowEntityProperties = false;
+		ShowInspectProperties = false;
+		ShowRaceProperties = false;
+		InspectCoordinates = null;
+	}
 
-    private void Move(int x, int y)
-    {
-        Position.X += x;
-        Position.Y += y;
-        StateHasChanged();
-    }
+	private void Move(int x, int y)
+	{
+		Position.X += x;
+		Position.Y += y;
+		StateHasChanged();
+	}
 
-    private IEnumerable<Entity> GetEntities()
-    {
-        var npcs = npcService.All().Select(npc => npc as Entity);
-        var enemies = enemyService.All().Select(enemy => enemy as Entity);
-        var entities = new List<Entity>();
-        entities.AddRange(npcs);
-        entities.AddRange(enemies);
-        return entities;
-    }
+	private IEnumerable<Entity> GetEntities()
+	{
+		var npcs = npcService.All().Select(npc => npc as Entity);
+		var enemies = enemyService.All().Select(enemy => enemy as Entity);
+		var entities = new List<Entity>();
+		entities.AddRange(npcs);
+		entities.AddRange(enemies);
+		return entities;
+	}
 
-    private void AddEntityToMap(Guid entityId, (int x, int y) position)
-    {
-        var entity = npcService.All().FirstOrDefault(npc => npc.Id == entityId) as Entity;
-        if (entity == null)
-        {
-            entity = enemyService.All().FirstOrDefault(enemy => enemy.Id == entityId) as Entity;
-        }
-        if (entity != null)
-        {
-            Map.AddEntity(entity, position);
-        }
-    }
+	private void AddEntityToMap(Guid entityId, (int x, int y) position)
+	{
+		var entity = npcService.All().FirstOrDefault(npc => npc.Id == entityId) as Entity;
+		if (entity == null)
+		{
+			entity = enemyService.All().FirstOrDefault(enemy => enemy.Id == entityId) as Entity;
+		}
+		if (entity != null)
+		{
+			Map.AddEntity(entity, position);
+		}
+	}
 
-    private bool ShowInspectOverlay((int x, int y) position)
-        => (!Map.IsEmpty(position) || playerService.GetPlayersAtPosition(position, Map.Id).Count() > 0)
-        && Mode == DrawMode.Inspect;
+	private bool ShowInspectOverlay((int x, int y) position)
+		=> (!Map.IsEmpty(position) || playerService.GetPlayersAtPosition(position, Map.Id).Count() > 0)
+		&& Mode == DrawMode.Inspect;
 }
 

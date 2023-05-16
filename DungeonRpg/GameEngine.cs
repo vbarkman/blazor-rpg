@@ -27,7 +27,7 @@ namespace DungeonRpg
 
 
     // Other Classes
-    public class Skill : IKey<Skill> 
+    public class Skill : IKey
     {
         public Guid Id { get; set; }
     }
@@ -35,7 +35,7 @@ namespace DungeonRpg
 
 
     public enum EffectType { Healing, Attribute, Mana }
-    public class Effect : IKey<Effect>
+    public class Effect : IKey
     {
         public Guid Id { get; set; }
         public string Name { get; set; }
