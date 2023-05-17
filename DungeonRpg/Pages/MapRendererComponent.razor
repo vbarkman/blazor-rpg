@@ -115,7 +115,6 @@
 		(int min, int max) yBounds = new(viewportCenter.Y - mapQuarterSize, mapQuarterSize + viewportCenter.Y);
 		(int x, int y) screenCenter = new(RenderWidth / 2, RenderHeight / 2);
 
-		//write to the buffer
 		await context.BeginBatchAsync();
 		{
 			await context.ClearRectAsync(0, 0, RenderWidth, RenderHeight);
@@ -134,19 +133,11 @@
 					var dx = (width - viewportCenter.X) * Map.TileSize + screenCenter.x;
 					var dy = (height - viewportCenter.Y) * Map.TileSize + screenCenter.y;
 					await context.DrawImageAsync(spritesheet, sx, sy, Map.TileSize, Map.TileSize, dx, dy, Map.TileSize, Map.TileSize);
-					//await _tempContext.StrokeTextAsync($"{tileX},{tileY}", dx, dy);
+					//await context.StrokeTextAsync($"{tileX},{tileY}", dx, dy);
 				}
 			}
 		}
 		await context.EndBatchAsync();
-
-		////write to the actual layer
-		//await context.BeginBatchAsync();
-		//{
-		//	await context.ClearRectAsync(0, 0, RenderWidth, RenderHeight);
-		//	await context.DrawImageAsync(_tempCanvasReference.CanvasReference, 0, 0);
-		//}
-		//await context.EndBatchAsync();
 
 	}
 
@@ -169,8 +160,9 @@
 						continue;
 					foreach (var entity in entities)
 					{
-						var tileX = 71 % Map.TilesetWidth;
-						var tileY = 71 / Map.TilesetWidth;
+						var tileId = entity.GetTileId();
+						var tileX = tileId % Map.TilesetWidth;
+						var tileY = tileId / Map.TilesetWidth;
 
 						var sx = tileX * Map.TileSize;
 						var sy = tileY * Map.TileSize;
