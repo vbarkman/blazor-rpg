@@ -1,4 +1,5 @@
-﻿using DungeonRpg.Services;
+﻿using DungeonRpg.Engine.Entities;
+using DungeonRpg.Services;
 using Microsoft.AspNetCore.Razor.Hosting;
 using Microsoft.Net.Http.Headers;
 using Newtonsoft.Json;
@@ -13,7 +14,7 @@ using static DungeonRpg.Engine.Map;
 
 namespace DungeonRpg.Engine
 {
-	[JsonObject(MemberSerialization.Fields)]
+    [JsonObject(MemberSerialization.Fields)]
 	public class Map : IKey
 	{
 		public const string SpriteSheet = "tileset";

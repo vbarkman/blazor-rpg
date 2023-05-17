@@ -1,4 +1,5 @@
-﻿using DungeonRpg.Services;
+﻿using DungeonRpg.Engine.Entities;
+using DungeonRpg.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -35,7 +36,7 @@ namespace DungeonRpg.Engine
     [Serializable]
     public abstract class Equipment : Item
     {
-        public Attributes AttributesRequired { get; set; } = new Attributes();
+        public EntityAttributes AttributesRequired { get; set; } = new EntityAttributes();
         public int EnchantmentLevel { get; set; }
         public int EquippedTileId { get; set; }
     }

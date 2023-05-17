@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using DungeonRpg.Engine.Entities;
 
 namespace DungeonRpg.Controllers
 {
@@ -164,7 +165,7 @@ namespace DungeonRpg.Controllers
     {
         public string Username { get; set; }
         public string Password { get; set; }
-        public Gender Gender { get; set; }
+        public Genders Gender { get; set; }
         public Guid RaceId { get; set; }
     }
 }

@@ -404,12 +404,6 @@ hr {
     height: 100%;
 }
 
-.client .panel-map {
-    width: 640px;
-    height: 640px;
-    background-color: blue;
-}
-
 .client .panel-center {
     width: calc(100% - 1240px);
     background-color: lime;

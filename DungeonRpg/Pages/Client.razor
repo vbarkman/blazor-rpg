@@ -1,7 +1,8 @@
 ﻿@page "/client"
-@using Blazor.Extensions;
-@using Blazor.Extensions.Canvas.Canvas2D;
+@using Blazor.Extensions
+@using Blazor.Extensions.Canvas.Canvas2D
 @using DungeonRpg.Engine
+@using DungeonRpg.Engine.Entities;
 @using DungeonRpg.Services
 @using System.Timers
 @using Microsoft.AspNetCore.Authorization
@@ -19,68 +20,7 @@
 	<div class="panel-top">
 		<div class="panel-left">
 			<div class="panel-map">
-				<div class="map">
-					<MapRendererComponent map="@Map" viewportCenter="@Player.Position"></MapRendererComponent>
-					@if (Map != null)
-					{
-						for (int y = -10; y < 10; y++)
-						{
-							<div class="map-row">
-								@for (int x = -10; x < 10; x++)
-								{
-									(int x, int y) position = (x + Player.Position.X, y + Player.Position.Y);
-									<div class="map-tile">
-										@foreach (var layer in Map.LayersEnumerable())
-										{
-											var tileId = Map[layer, position.x, position.y];
-											if (tileId == 4839)
-											{
-												<div class="map-tile-layer">
-													<div class="tile tile-68"></div>
-												</div>
-											}
-											else if (tileId != 0)
-											{
-												<div class="map-tile-layer">
-													<div class="tile tile-@tileId"></div>
-												</div>
-											}
-										}
-										@foreach (var entity in mapService.GetEntitiesAtPosition(position, Map.Id))
-										{
-											switch (entity)
-											{
-												case Player player:
-													<div class="map-tile-layer">
-														<div class="tile tile-71"></div>
-													</div>
-													break;
-												case Npc npc:
-													<div class="map-tile-layer">
-														<div class="tile tile-71"></div>
-													</div>
-													break;
-												case Enemy enemy:
-													<div class="map-tile-layer">
-														<div class="tile tile-71"></div>
-													</div>
-													break;
-											}
-										}
-										@if (IsTileWalkable(position))
-										{
-											<div class="map-tile-layer" @onclick="() => WalkTo(position)">
-												<div class="tile tile-hover"></div>
-											</div>
-										}
-									</div>
-								}
-							</div>
-						}
-					}
-					<div style="clear: both;"></div>
-
-				</div>
+				<MapRendererComponent map="@Map" viewportCenter="@Player.Position"></MapRendererComponent>
 			</div>
 		</div>
 		<div class="panel-center">

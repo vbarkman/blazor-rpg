@@ -1,4 +1,5 @@
-﻿using DungeonRpg.Services;
+﻿using DungeonRpg.Engine.Entities;
+using DungeonRpg.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;

@@ -1,4 +1,5 @@
 ﻿using DungeonRpg.Engine;
+using DungeonRpg.Engine.Entities;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;

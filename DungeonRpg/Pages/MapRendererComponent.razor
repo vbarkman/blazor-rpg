@@ -12,7 +12,7 @@
 		position: relative;
 		width: @(RenderWidth)px;
 		height: @(RenderHeight)px;
-		border: solid black 2px;
+		background-color: black;
 	}
 
 		.mapContainer canvas {
@@ -25,17 +25,18 @@
 </style>
 
 <div>
-	<button class="btn btn-primary" @onclick="Batch">Batch: @batch</button>
-	<button class="btn btn-primary" @onclick="SizeUp">Size+: @mapQuarterSize</button>
-	<button class="btn btn-primary" @onclick="SizeDown">Size-: @mapQuarterSize</button>
-
-	<div class="mapContainer">
-		<BECanvas Width="@RenderWidth" Height="@RenderHeight" @ref="_floorCanvasReference"></BECanvas>
-		<BECanvas Width="@RenderWidth" Height="@RenderHeight" @ref="_solidCanvasReference"></BECanvas>
-		<BECanvas Width="@RenderWidth" Height="@RenderHeight" @ref="_entityCanvasReference"></BECanvas>
-		<BECanvas Width="@RenderWidth" Height="@RenderHeight" @ref="_overlayCanvasReference"></BECanvas>
-		<img @ref="spritesheet" hidden id="spritesheet" src="tiles/@(Map.SpriteSheet).png" @onload="ImageLoaded" />
-	</div>
+	<button class="btn btn-primary" @onclick="SizeUp">Size+: @(mapQuarterSize * 2 + 1)</button>
+	<button class="btn btn-primary" @onclick="SizeDown">Size-: @(mapQuarterSize * 2 + 1)</button>
+</div>
+<div class="mapContainer">
+	<BECanvas Width="@RenderWidth" Height="@RenderHeight" @ref="_mapCanvasReference"></BECanvas>
+</div>
+<div class="layersContainer" hidden>
+	<BECanvas Width="@RenderWidth" Height="@RenderHeight" @ref="_floorCanvasReference"></BECanvas>
+	<BECanvas Width="@RenderWidth" Height="@RenderHeight" @ref="_solidCanvasReference"></BECanvas>
+	<BECanvas Width="@RenderWidth" Height="@RenderHeight" @ref="_entityCanvasReference"></BECanvas>
+	<BECanvas Width="@RenderWidth" Height="@RenderHeight" @ref="_overlayCanvasReference"></BECanvas>
+	<img @ref="spritesheet" src="tiles/@(Map.SpriteSheet).png" @onload="ImageLoaded" />
 </div>
 
 @code {
@@ -45,26 +46,25 @@
 	public required ElementReference spritesheet { get; set; }
 	private int RenderWidth = 640;
 	private int RenderHeight = 420;
+
+	private Canvas2DContext _mapContext;
 	private Canvas2DContext _floorContext;
 	private Canvas2DContext _solidContext;
 	private Canvas2DContext _entityContext;
 	private Canvas2DContext _overlayContext;
+
 	private bool imageLoaded = false;
 	private bool initialized = false;
+
+	protected BECanvasComponent _mapCanvasReference;
 	protected BECanvasComponent _floorCanvasReference;
 	protected BECanvasComponent _solidCanvasReference;
 	protected BECanvasComponent _entityCanvasReference;
 	protected BECanvasComponent _overlayCanvasReference;
 
-	private bool batch = true;
 	private int mapQuarterSize = 10;
 
-	private (int X, int Y) _lastViewportCenter;
-
-	protected void Batch()
-	{
-		batch = !batch;
-	}
+	private (int X, int Y)? _lastViewportCenter;
 
 	protected void SizeUp()
 	{
@@ -87,6 +87,7 @@
 
 		if (firstRender)
 		{
+			_mapContext = await _mapCanvasReference.CreateCanvas2DAsync();
 			_floorContext = await _floorCanvasReference.CreateCanvas2DAsync();
 			_solidContext = await _solidCanvasReference.CreateCanvas2DAsync();
 			_entityContext = await _entityCanvasReference.CreateCanvas2DAsync();
@@ -94,22 +95,39 @@
 			//await JsRuntime.InvokeAsync<object>("initGame", DotNetObjectReference.Create(this));
 			return;
 		}
-		if (!imageLoaded)
+		if (!imageLoaded || _entityContext == null)
 			return;
 
+		//redraw map render only on changes
 		if (_lastViewportCenter != viewportCenter)
 		{
 			_lastViewportCenter = viewportCenter;
-			await RenderMap(_floorContext, map, Map.LayerType.Floor, viewportCenter);
-			await RenderMap(_solidContext, map, Map.LayerType.Solid, viewportCenter);
-			await RenderMap(_overlayContext, map, Map.LayerType.Overlay, viewportCenter);
+			await RenderLayer(_floorContext, map, Map.LayerType.Floor, viewportCenter);
+			await RenderLayer(_solidContext, map, Map.LayerType.Solid, viewportCenter);
+			await RenderLayer(_overlayContext, map, Map.LayerType.Overlay, viewportCenter);
 		}
+
 		await RenderEntities(_entityContext, map, viewportCenter);
 
-		// update & render
+		//Render the full map at once to avoid layer shearing
+		await RenderMap(_mapContext);
 	}
 
-	private async Task RenderMap(Canvas2DContext context, Map map, Map.LayerType layer, (int X, int Y) viewportCenter)
+	private async Task RenderMap(Canvas2DContext context)
+	{
+		await context.BeginBatchAsync();
+		{
+			await context.ClearRectAsync(0, 0, RenderWidth, RenderHeight);
+
+			await context.DrawImageAsync(_floorCanvasReference.CanvasReference, 0, 0);
+			await context.DrawImageAsync(_solidCanvasReference.CanvasReference, 0, 0);
+			await context.DrawImageAsync(_entityCanvasReference.CanvasReference, 0, 0);
+			await context.DrawImageAsync(_overlayCanvasReference.CanvasReference, 0, 0);
+		}
+		await context.EndBatchAsync();
+	}
+
+	private async Task RenderLayer(Canvas2DContext context, Map map, Map.LayerType layer, (int X, int Y) viewportCenter)
 	{
 		(int min, int max) xBounds = new(viewportCenter.X - mapQuarterSize, mapQuarterSize + viewportCenter.X);
 		(int min, int max) yBounds = new(viewportCenter.Y - mapQuarterSize, mapQuarterSize + viewportCenter.Y);
@@ -130,8 +148,8 @@
 					var sx = tileX * Map.TileSize;
 					var sy = tileY * Map.TileSize;
 
-					var dx = (width - viewportCenter.X) * Map.TileSize + screenCenter.x;
-					var dy = (height - viewportCenter.Y) * Map.TileSize + screenCenter.y;
+					var dx = (width - viewportCenter.X) * Map.TileSize + screenCenter.x - Map.TileSize / 2;
+					var dy = (height - viewportCenter.Y) * Map.TileSize + screenCenter.y - Map.TileSize / 2;
 					await context.DrawImageAsync(spritesheet, sx, sy, Map.TileSize, Map.TileSize, dx, dy, Map.TileSize, Map.TileSize);
 					//await context.StrokeTextAsync($"{tileX},{tileY}", dx, dy);
 				}
@@ -167,8 +185,8 @@
 						var sx = tileX * Map.TileSize;
 						var sy = tileY * Map.TileSize;
 
-						var dx = (width - viewportCenter.X) * Map.TileSize + screenCenter.x;
-						var dy = (height - viewportCenter.Y) * Map.TileSize + screenCenter.y;
+						var dx = (width - viewportCenter.X) * Map.TileSize + screenCenter.x - Map.TileSize / 2;
+						var dy = (height - viewportCenter.Y) * Map.TileSize + screenCenter.y - Map.TileSize / 2;
 						await context.DrawImageAsync(spritesheet, sx, sy, Map.TileSize, Map.TileSize, dx, dy, Map.TileSize, Map.TileSize);
 						//await _tempContext.StrokeTextAsync($"{tileX},{tileY}", dx, dy);
 					}
@@ -176,15 +194,6 @@
 			}
 		}
 		await context.EndBatchAsync();
-
-		////write to the actual layer
-		//await context.BeginBatchAsync();
-		//{
-		//	await context.ClearRectAsync(0, 0, RenderWidth, RenderHeight);
-		//	await context.DrawImageAsync(_tempCanvasReference.CanvasReference, 0, 0);
-		//}
-		//await context.EndBatchAsync();
-
 	}
 
 }
